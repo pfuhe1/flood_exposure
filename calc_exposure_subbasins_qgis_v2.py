@@ -12,31 +12,40 @@ import processing # (qgis processing)
 ####################################################
 # BASE PATH:
 flood_dir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
-pop_dir = '/Users/pete/onedrivelink/data2/population_datasets'
-outdir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/exposure_95ile'
+pop_dir = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/processing'
+outdir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/exposureHRSL_95ile'
 if not os.path.exists(outdir):
 	os.mkdir(outdir)
 
+if not os.path.exists(pop_dir):
+	os.mkdir(pop_dir)
+
 expts = ['historical','slice20']
 discharge_pts = ['Brahmaputra','Ganges','Meghna','combined']
+regclip = {'Brahmaputra':'brahmaputra1','Meghna':'Meghna','Bangladesh':None,'Ganges':'ganges_subset'}
 
 # Population files were clipped to masks for different subregions.
 # All files regridded back onto common grid (xmin,xmax,ymin,ymax):
 # 87.627916667,92.737916667,21.131250000,26.681250000)
-population_regions = ['brahmaputra_regrid','ganges_regrid','meghna-clipsouth_regrid','meghna_regrid','2018-10-01_regrid','clipsouth_regrid']
+#population_regions = ['brahmaputra_regrid','ganges_regrid','meghna-clipsouth_regrid','meghna_regrid','2018-10-01_regrid','clipsouth_regrid']
 #population_regions = ['2018-10-01_regrid']
+for reg in regclip.keys():
+	fclip = os.path.join(clipdir,fpart+'.shp')
+	pop_clip = os.path.join(pop_dir,'population_bgd_'+reg+'_regrid270m.tif')
+	#gdal:cliprasterbymasklayer -> Clip raster by mask layer
 
-for reg in population_regions:
+
+#for reg in population_regions:
 	# Input population file
-	pop_file = os.path.join(pop_dir,'population_bgd_'+reg+'270m.tif')
-	if not os.path.exists(pop_file):
-		print('Error, missing population file',pop_file)
-		continue
+	#pop_clip = os.path.join(pop_dir,'population_bgd_'+reg+'270m.tif')
+	#if not os.path.exists(pop_clip):
+	#	print('Error, missing population file',pop_clip)
+	#	continue
 	print('\nPopulation region mask:',reg)
-	population_summary = os.path.join(outdir,'population_bgd_'+reg+'_270m_summary.html')
+	population_summary = os.path.join(pop_dir,'population_bgd_'+reg+'_regrid270m_summary.html')
 	# Calculating stats:
 	#print('calculating summary:')
-	cmd_dict = {'INPUT':pop_file,'BAND':1,'OUTPUT_HTML_FILE':population_summary}
+	cmd_dict = {'INPUT':pop_clip,'BAND':1,'OUTPUT_HTML_FILE':population_summary}
 	out = processing.run('qgis:rasterlayerstatistics',cmd_dict)
 	regpop = out['SUM']
 	print(f"Total population in region (millions): {regpop/1000000:.3f}\n")
@@ -52,15 +61,15 @@ for reg in population_regions:
 				print('Calculating exposed population')
 				# raster calculator (see processing.algorithmHelp('gdal:rastercalculator')
 				# 'where(B==100.0,A,0.0)'
-				#cmd_dict = {'INPUT_A':pop_file,'BAND_A':1,'INPUT_B':flood_file,'BAND_B':1,'FORMULA':'where(B==100.0,A,0.0)','NO_DATA':0.0,'RTYPE':5,'OUTPUT':f_exposure}
+				cmd_dict = {'INPUT_A':pop_clip,'BAND_A':1,'INPUT_B':flood_file,'BAND_B':1,'FORMULA':'where(B==100.0,A,0.0)','NO_DATA':0.0,'RTYPE':5,'OUTPUT':f_exposure}
 				# Test dummy calculation:
 				#cmd_dict = {'INPUT_A':flood_file,'BAND_A':1,'FORMULA':'A*2','NO_DATA':0.0,'OUTPUT':f_exposure}
-				#print(cmd_dict)
-				#ret = processing.run('gdal:rastercalculator',cmd_dict)
-				#print(ret)
-				cmd = ['gdal_calc.py','-A',pop_file,'-B',flood_file,'--calc','where(B==100.0,A,0.0)','--NoDataValue','0.0','--outfile',f_exposure,'--co','COMPRESS=DEFLATE']
+				print(cmd_dict)
+				ret = processing.run('gdal:rastercalculator',cmd_dict)
+				print(ret)
+				cmd = ['gdal_calc.py','-A',pop_clip,'-B',flood_file,'--calc','where(B==100.0,A,0.0)','--NoDataValue','0.0','--outfile',f_exposure,'--co','COMPRESS=DEFLATE']
 				print(' '.join(cmd))
-				subprocess.call(cmd)
+				#subprocess.call(cmd)
 
 
 			exposure_summary = os.path.join(outdir,expt+'_'+dischargept+'_'+reg+'_1in20flood_summary.html')
