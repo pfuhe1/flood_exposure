@@ -6,19 +6,14 @@
 #
 # The output of this script is used along with the mizuRoute output to calculate bankfull Q at each point along river network.
 
-import os,socket,subprocess,socket,pickle
+import os,socket,subprocess
 import processing # (qgis processing)
-host = socket.gethostname()
+
 ####################################################
 # BASE PATH:
-if host == 'mac':
-	flood_dir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
-	pop_dir = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/processing'
-	outdir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/exposureHRSL_95ile'
-else:
-	flood_dir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
-	pop_dir = '/home/pu17449//data2/population_datasets/HRSL/processing'
-	outdir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/exposureHRSL_95ile'
+flood_dir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
+pop_dir = '/home/pu17449/data2/population_datasets/worldpop2020/processing'
+outdir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/exposureWorldpop2020_95ile'
 pickle_out = os.path.join(outdir,'exposure_dict.pkl')
 if not os.path.exists(outdir):
 	os.mkdir(outdir)
@@ -39,10 +34,11 @@ regclip = {'Brahmaputra':'brahmaputra1','Meghna':'Meghna','Bangladesh':None,'Gan
 #population_regions = ['brahmaputra_regrid','ganges_regrid','meghna-clipsouth_regrid','meghna_regrid','2018-10-01_regrid','clipsouth_regrid']
 #population_regions = ['2018-10-01_regrid']
 for reg in regclip.keys():
+	exposure_dict[reg]={}
 	#fclip = os.path.join(clipdir,fpart+'.shp')
 	pop_clip = os.path.join(pop_dir,'population_bgd_'+reg+'_regrid270m.tif')
 	#gdal:cliprasterbymasklayer -> Clip raster by mask layer
-	exposure_dict[reg]={}
+
 
 #for reg in population_regions:
 	# Input population file
@@ -57,8 +53,9 @@ for reg in regclip.keys():
 	cmd_dict = {'INPUT':pop_clip,'BAND':1,'OUTPUT_HTML_FILE':population_summary}
 	out = processing.run('qgis:rasterlayerstatistics',cmd_dict)
 	regpop = out['SUM']
-	#print(f"Total population in region (millions): {regpop/1000000:.3f}\n")
 	total_pop[reg] = regpop/1000000.
+	#print(f"Total population in region (millions): {regpop/1000000:.3f}\n")
+	print('total pop:',regpop/1000000)
 	for dischargept in discharge_pts:
 		exposure_dict[reg][dischargept]={}
 		for expt in expts:
@@ -90,6 +87,7 @@ for reg in regclip.keys():
 			out = processing.run('qgis:rasterlayerstatistics',cmd_dict)
 			#print(out)
 			#print(f"Exposure (millions): {dischargept} , {expt}, {out['SUM']/1000000:.3f}, {(100*out['SUM']/regpop):0.1f}%")
+			print("Exposure (millions):",dischargept, expt, out['SUM']/1000000, 100*out['SUM']/regpop)
 			exposure_dict[reg][dischargept][expt] = out['SUM']/1000000.
 
 with open(pickle_out,'wb') as f:

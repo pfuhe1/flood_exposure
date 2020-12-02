@@ -10,20 +10,18 @@ import os,socket,subprocess
 
 
 ####################################################
-# BASE PATH:
-flood_dir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
-input_pop = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/population_bgd_2018-10-01_regrid270m.tif'
-pop_dir = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/processing'
-outdir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/exposureHRSL_95ile'
-clipdir = '/Users/pete/onedrivelink/data2/shapefiles/shapefile_subbasins'
-if not os.path.exists(outdir):
-	os.mkdir(outdir)
+# PATHS:
+#input_pop = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/population_bgd_2018-10-01_regrid270m.tif'
+#pop_dir = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/processing'
+#clipdir = '/Users/pete/onedrivelink/data2/shapefiles/shapefile_subbasins'
+
+input_pop = '/home/pu17449/data2/population_datasets/worldpop2020/bgd_ppp_2020_constrained_regrid270m.tif'
+pop_dir = '/home/pu17449/data2/population_datasets/worldpop2020/processing'
+clipdir = '/home/pu17449/data2/shapefiles/shapefile_subbasins'
 
 if not os.path.exists(pop_dir):
 	os.mkdir(pop_dir)
 
-expts = ['historical','slice20']
-discharge_pts = ['Brahmaputra','Ganges','Meghna','combined']
 regclip = {'Brahmaputra':'brahmaputra1','Meghna':'Meghna','Ganges':'ganges_subset','Bangladesh':''}
 
 # Population files were clipped to masks for different subregions.
