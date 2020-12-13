@@ -12,14 +12,14 @@ host = socket.gethostname()
 ####################################################
 # BASE PATH:
 if host == 'Peters-MacBook-Pro.local':
-	flood_dir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
+	flood_dir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/recurrence-wdfp_95ile'
 	pop_dir = '/Users/pete/onedrivelink/data2/population_datasets/HRSL/processing-fill0'
 	outdir = '/Users/pete/onedrivelink/data2/flood_model_tests/bangladesh_v1/exposureHRSL-fill0_95ile'
 else:
-	flood_dir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/recurrence_95ile'
-	pop_dir = '/home/pu17449//data2/population_datasets/HRSL/processing'
-	outdir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/exposureHRSL_95ile'
-pickle_out = os.path.join(outdir,'exposure_dict.pkl')
+	flood_dir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/recurrence-wdfp_95ile'
+	pop_dir = '/home/pu17449//data2/population_datasets/HRSL/processing-fill0'
+	outdir = '/home/pu17449/data2/flood_model_tests/bangladesh_v1/exposureHRSL-fill0_95ile'
+pickle_out = os.path.join(outdir,'exposure_dict_fill0.pkl')
 if not os.path.exists(outdir):
 	os.mkdir(outdir)
 
@@ -61,9 +61,12 @@ for reg in regclip.keys():
 	total_pop[reg] = regpop/1000000.
 	for dischargept in discharge_pts:
 		exposure_dict[reg][dischargept]={}
+		exptlist_fexposure = []
+		exptlist_fhazard   = []
+
 		for expt in expts:
 			# Input
-			flood_file = os.path.join(flood_dir,'recurrence_95ile-runs_'+expt+'_'+dischargept+'.tif')
+			flood_file = os.path.join(flood_dir,'recurrence-wdfp_95ile-runs_'+expt+'_'+dischargept+'.tif')
 			if not os.path.exists(flood_file):
 				raise Exception('Error, missing flood file: '+flood_file)
 			# Output
@@ -72,13 +75,13 @@ for reg in regclip.keys():
 				print('Calculating exposed population')
 				# raster calculator (see processing.algorithmHelp('gdal:rastercalculator')
 				# 'where(B==100.0,A,0.0)'
-				cmd_dict = {'INPUT_A':pop_clip,'BAND_A':1,'INPUT_B':flood_file,'BAND_B':1,'FORMULA':'where(B==100.0,A,0.0)','NO_DATA':0.0,'RTYPE':5,'OUTPUT':f_exposure}
+				cmd_dict = {'INPUT_A':pop_clip,'BAND_A':1,'INPUT_B':flood_file,'BAND_B':1,'FORMULA':'where(B==100.0,A,0.0)','RTYPE':5,'OUTPUT':f_exposure}
 				# Test dummy calculation:
 				#cmd_dict = {'INPUT_A':flood_file,'BAND_A':1,'FORMULA':'A*2','NO_DATA':0.0,'OUTPUT':f_exposure}
 				print(cmd_dict)
 				ret = processing.run('gdal:rastercalculator',cmd_dict)
 				print(ret)
-				cmd = ['gdal_calc.py','-A',pop_clip,'-B',flood_file,'--calc','where(B==100.0,A,0.0)','--NoDataValue','0.0','--outfile',f_exposure,'--co','COMPRESS=DEFLATE']
+				cmd = ['gdal_calc.py','-A',pop_clip,'-B',flood_file,'--calc','where(B==100.0,A,0.0)','--outfile',f_exposure,'--co','COMPRESS=DEFLATE']
 				print(' '.join(cmd))
 				#subprocess.call(cmd)
 
@@ -91,6 +94,25 @@ for reg in regclip.keys():
 			#print(out)
 			#print(f"Exposure (millions): {dischargept} , {expt}, {out['SUM']/1000000:.3f}, {(100*out['SUM']/regpop):0.1f}%")
 			exposure_dict[reg][dischargept][expt] = out['SUM']/1000000.
+
+			exptlist_fexposure.append(f_exposure)
+			exptlist_fhazard.append(flood_file)
+
+		# Calc difference
+		f_exposurediff = os.path.join(outdir,'diff_'+dischargept+'_'+reg+'_1in20flood.tif')
+		if not os.path.exists(f_exposurediff):
+			cmd_dict = {'INPUT_A':exptlist_fexposure[0],'BAND_A':1,'INPUT_B':exptlist_fexposure[1],'BAND_B':1,'FORMULA':'B-A','NO_DATA':0.0,'RTYPE':5,'OUTPUT':f_exposurediff}
+			print(cmd_dict)
+			ret = processing.run('gdal:rastercalculator',cmd_dict)
+			print(ret)
+
+		# As an extra thing, calculate difference in hazard.
+		f_hazarddiff = os.path.join(flood_dir,'diff-wdfp_'+dischargept+'_1in20flood.tif')
+		if not os.path.exists(f_hazarddiff):
+			cmd_dict = {'INPUT_A':exptlist_fhazard[0],'BAND_A':1,'INPUT_B':exptlist_fhazard[1],'BAND_B':1,'FORMULA':'(B==100.0).astype(int)-(A==100.0).astype(int)','RTYPE':1,'OUTPUT':f_hazarddiff}
+			print(cmd_dict)
+			ret = processing.run('gdal:rastercalculator',cmd_dict)
+			print(ret)
 
 with open(pickle_out,'wb') as f:
 	pickle.dump(exposure_dict,f)
